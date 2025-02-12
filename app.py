@@ -133,7 +133,7 @@ for message in st.session_state.messages:
     if role == "assistant" and "relevant_chunk" in message:
         st.markdown(
             f"""
-            <div style="font-size: 10px; color: #888;">
+            <div style="font-size: 5px; color: #3deb2a;">
                 Relevant chunk used: {message["relevant_chunk"]}
             </div>
             """,
@@ -178,6 +178,3 @@ if user_input := st.chat_input("Type your question here..."):
                 "content": full_response,
                 "timestamp": timestamp
             })
-
-    # Scroll to the bottom of the chat
-    st.experimental_rerun()
