@@ -133,7 +133,7 @@ for message in st.session_state.messages:
     if role == "assistant" and "relevant_chunk" in message:
         st.markdown(
             f"""
-            <div style="font-size: 5px; color: #3deb2a;">
+            <div style="font-size: 10px; color: #888;">
                 Relevant chunk used: {message["relevant_chunk"]}
             </div>
             """,
@@ -178,3 +178,6 @@ if user_input := st.chat_input("Type your question here..."):
                 "content": full_response,
                 "timestamp": timestamp
             })
+
+    # Force update by modifying session state directly
+    st.experimental_set_query_params(update=1)  # Trigger re-render without st.rerun()
