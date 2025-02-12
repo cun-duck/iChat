@@ -180,4 +180,4 @@ if user_input := st.chat_input("Type your question here..."):
             })
 
     # Force update by modifying session state directly
-    st.experimental_set_query_params(update=1)  # Trigger re-render without st.rerun()
+    st.query_params.update = 1
