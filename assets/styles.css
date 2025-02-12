@@ -1,0 +1,23 @@
+/* Chat message styling */
+.stChatMessage {
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.stChatMessage.user {
+    background-color: #e8f0fe;
+    align-self: flex-end;
+}
+
+.stChatMessage.assistant {
+    background-color: #f1f3f4;
+    align-self: flex-start;
+}
+
+/* Chat input styling */
+.stChatInput {
+    border-radius: 20px;
+    padding: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
