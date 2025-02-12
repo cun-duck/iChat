@@ -6,14 +6,14 @@ from utils.rag import retrieve_relevant_chunk
 from utils.prompt_optimizer import optimize_prompt
 import time
 
-# Load CSS
+# Muat CSS kustom
 def load_css():
     with open("assets/styles.css") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 load_css()
 
-# Sidebar for user inputs and feedback
+# Sidebar untuk input pengguna dan feedback
 st.sidebar.title("Settings")
 
 # Input HF_TOKEN
@@ -22,15 +22,15 @@ hf_token = st.sidebar.text_input("Enter Hugging Face Token:", type="password")
 # Upload PDF file
 uploaded_file = st.sidebar.file_uploader("Upload a PDF file", type=["pdf"])
 
-# Prompt optimizer
+# Prompt optimizer (opsional)
 instructions = st.sidebar.text_area("Add instructions for prompt optimization (optional):")
 
-# Feedback section in the sidebar
+# Feedback section di sidebar
 st.sidebar.subheader("Feedback")
-token_feedback = st.sidebar.empty()  # Placeholder for token usage
-chunk_feedback = st.sidebar.empty()  # Placeholder for chunk used
+token_feedback = st.sidebar.empty()  # Placeholder untuk informasi penggunaan token
+chunk_feedback = st.sidebar.empty()  # Placeholder untuk informasi chunk yang digunakan
 
-# Initialize session state variables
+# Inisialisasi session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "last_activity" not in st.session_state:
@@ -38,7 +38,7 @@ if "last_activity" not in st.session_state:
 if "chunks" not in st.session_state:
     st.session_state.chunks = []
 
-# Default context and prompt
+# Default context dan prompt
 default_context = """
 This is a general-purpose chatbot that can answer questions about technology, programming, AI, and other topics.
 For example:
@@ -51,33 +51,33 @@ You are a helpful assistant. If no specific context is provided, answer general 
 If the question is unclear or cannot be answered, politely inform the user.
 """
 
-# Function to reset user data
+# Fungsi untuk mereset data pengguna jika terjadi inaktivitas
 def reset_user_data():
     st.session_state.messages = []
     st.session_state.chunks = []
     st.session_state.uploaded_file = None
     st.sidebar.success("User data has been cleared due to inactivity.")
 
-# Check for inactivity
+# Cek inaktivitas (jika lebih dari 2 menit)
 current_time = time.time()
-if current_time - st.session_state.last_activity > 120:  # 120 seconds = 2 minutes
+if current_time - st.session_state.last_activity > 120:  # 120 detik = 2 menit
     reset_user_data()
 
-# Update last activity time whenever there is user interaction
+# Update waktu aktivitas terakhir
 st.session_state.last_activity = current_time
 
-# Process PDF file if uploaded
+# Proses file PDF yang diunggah
 if uploaded_file:
     try:
-        # Extract text from the uploaded PDF
+        # Ekstrak teks dari PDF
         text = extract_text_from_pdf(uploaded_file)
         st.session_state.chunks = chunk_text(text)
         st.sidebar.success(f"PDF successfully processed! File split into {len(st.session_state.chunks)} chunks.")
-        st.toast(f"File split into {len(st.session_state.chunks)} chunks.")  # Pop-up notification
+        st.toast(f"File split into {len(st.session_state.chunks)} chunks.")  # Notifikasi pop-up
     except ValueError as e:
         st.sidebar.error(str(e))
 
-# Initialize AI model if HF_TOKEN is provided
+# Inisialisasi model AI jika HF_TOKEN telah dimasukkan
 if hf_token:
     client = InferenceClient(
         provider="hf-inference",
@@ -86,7 +86,7 @@ if hf_token:
 else:
     st.sidebar.warning("Please enter your Hugging Face Token to use the model.")
 
-# Function to generate response from the model
+# Fungsi untuk menghasilkan respons dari model
 def generate_response(prompt, context=None):
     if not hf_token:
         st.error("Please enter your Hugging Face Token first.")
@@ -105,85 +105,59 @@ def generate_response(prompt, context=None):
     )
     return completion.choices[0].message.content, completion.usage.total_tokens
 
-# Main page
+# Tampilan Halaman Utama
 st.title("LLM Chatbot with Local RAG")
 
-# Display chat messages from history
-
-def update_chat():
-    chat_text = '\n'.join(chat_messages)
-    chat_placeholder.text(chat_text)
-    
+# Menampilkan riwayat chat yang tersimpan
 for message in st.session_state.messages:
     role = message["role"]
     content = message["content"]
     timestamp = message.get("timestamp", "")
-    avatar_class = "user-avatar" if role == "user" else "assistant-avatar"
-    bubble_class = "user-bubble" if role == "user" else "assistant-bubble"
+    if role == "user":
+        st.chat_message("user").write(f"{content} ({timestamp})")
+    else:
+        assistant_msg = st.chat_message("assistant")
+        assistant_msg.write(f"{content} ({timestamp})")
+        # Jika ada informasi chunk yang relevan, tampilkan juga
+        if "relevant_chunk" in message:
+            st.write(f"<div style='font-size: 10px; color: #888;'>Relevant chunk used: {message['relevant_chunk']}</div>", unsafe_allow_html=True)
 
-    st.markdown(
-        f"""
-        <div class="chat-container">
-            <div class="{bubble_class}">
-                <div class="{avatar_class}"></div>
-                {content}
-                <div class="timestamp">{timestamp}</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # Show relevant chunk (if any) below assistant's response
-    if role == "assistant" and "relevant_chunk" in message:
-        st.markdown(
-            f"""
-            <div style="font-size: 10px; color: #888;">
-                Relevant chunk used: {message["relevant_chunk"]}
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-# User input for questions
+# Input pertanyaan pengguna dengan st.chat_input
 if user_input := st.chat_input("Type your question here..."):
-    # Add user message to chat history
+    # Tambahkan pesan pengguna ke riwayat chat dan tampilkan
     timestamp = time.strftime("%H:%M")
     st.session_state.messages.append({"role": "user", "content": user_input, "timestamp": timestamp})
-
-    # Generate response with spinner
-    with st.spinner("Generating response..."):
+    st.chat_message("user").write(user_input)
+    
+    # Placeholder untuk respons asisten dengan streaming
+    with st.chat_message("assistant") as assistant_msg:
+        placeholder = st.empty()  # Placeholder untuk update streaming respons
+        
+        # Jika ada PDF yang telah diproses, cari chunk yang relevan
         if st.session_state.chunks:
             relevant_chunk = retrieve_relevant_chunk(user_input, st.session_state.chunks)
             full_response, token_usage = generate_response(user_input, context=relevant_chunk)
-
-            # Update feedback in the sidebar
             token_feedback.markdown(f"**Tokens used:** {token_usage}")
             chunk_feedback.markdown(f"**Relevant chunk used:** {relevant_chunk}")
-
-            # Add assistant message to chat history with relevant chunk
-            timestamp = time.strftime("%H:%M")
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": full_response,
-                "timestamp": timestamp,
-                "relevant_chunk": relevant_chunk
-            })
         else:
             full_response, token_usage = generate_response(user_input, context=default_context)
-
-            # Update feedback in the sidebar
             token_feedback.markdown(f"**Tokens used:** {token_usage}")
             chunk_feedback.markdown("**No chunk used (no PDF uploaded).**")
+        
+        # Simulasi streaming: tampilkan respons secara bertahap (misalnya, per kata)
+        response_stream = ""
+        for word in full_response.split():
+            response_stream += word + " "
+            placeholder.write(response_stream)
+            time.sleep(0.05)  # jeda pendek untuk efek streaming
 
-            # Add assistant message to chat history without relevant chunk
-            timestamp = time.strftime("%H:%M")
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": full_response,
-                "timestamp": timestamp
-            })
-            time.sleep(5)
-
-    # Force update by modifying session state directly
-    st.query_params.update = 1
+        # Setelah streaming selesai, simpan respons penuh ke riwayat chat
+        timestamp = time.strftime("%H:%M")
+        message_data = {
+            "role": "assistant",
+            "content": full_response,
+            "timestamp": timestamp
+        }
+        if st.session_state.chunks:
+            message_data["relevant_chunk"] = relevant_chunk
+        st.session_state.messages.append(message_data)
