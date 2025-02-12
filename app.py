@@ -109,6 +109,11 @@ def generate_response(prompt, context=None):
 st.title("LLM Chatbot with Local RAG")
 
 # Display chat messages from history
+
+def update_chat():
+    chat_text = '\n'.join(chat_messages)
+    chat_placeholder.text(chat_text)
+    
 for message in st.session_state.messages:
     role = message["role"]
     content = message["content"]
@@ -178,6 +183,7 @@ if user_input := st.chat_input("Type your question here..."):
                 "content": full_response,
                 "timestamp": timestamp
             })
+            time.sleep(5)
 
     # Force update by modifying session state directly
     st.query_params.update = 1
