@@ -1,23 +1,39 @@
-/* Chat message styling */
-.stChatMessage {
-    border-radius: 10px;
-    padding: 10px;
-    margin-bottom: 10px;
+/* General chat container */
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    max-width: 80%;
+    margin: 10px auto;
 }
 
-.stChatMessage.user {
-    background-color: #e8f0fe;
+/* User chat bubble */
+.user-bubble {
     align-self: flex-end;
+    background-color: #dcf8c6; /* Greenish color for user messages */
+    color: #000;
+    padding: 10px 15px;
+    border-radius: 20px 20px 0 20px; /* Rounded corners */
+    margin-bottom: 10px;
+    max-width: 70%;
+    word-wrap: break-word;
 }
 
-.stChatMessage.assistant {
-    background-color: #f1f3f4;
+/* Assistant chat bubble */
+.assistant-bubble {
     align-self: flex-start;
+    background-color: #ececec; /* Light gray for assistant messages */
+    color: #000;
+    padding: 10px 15px;
+    border-radius: 20px 20px 20px 0; /* Rounded corners */
+    margin-bottom: 10px;
+    max-width: 70%;
+    word-wrap: break-word;
 }
 
-/* Chat input styling */
-.stChatInput {
-    border-radius: 20px;
-    padding: 10px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+/* Timestamp styling */
+.timestamp {
+    font-size: 10px;
+    color: #888;
+    margin-top: 5px;
+    text-align: right;
 }
