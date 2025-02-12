@@ -48,6 +48,15 @@ if current_time - st.session_state.last_activity > 120:  # 120 seconds = 2 minut
 # Update last activity time whenever there is user interaction
 st.session_state.last_activity = current_time
 
+# Initialize AI model if HF_TOKEN is provided
+if hf_token:
+    client = InferenceClient(
+        provider="hf-inference",
+        api_key=hf_token
+    )
+else:
+    st.sidebar.warning("Please enter your Hugging Face Token to use the model.")
+
 # Process PDF file if uploaded
 if uploaded_file:
     try:
@@ -61,6 +70,10 @@ if uploaded_file:
 
 # Function to generate response from the model
 def generate_response(prompt, context=None):
+    if not hf_token:
+        st.error("Please enter your Hugging Face Token first.")
+        return "", 0
+
     messages = [
         {"role": "user", "content": prompt}
     ]
@@ -105,26 +118,17 @@ if user_input := st.chat_input("Type your question here..."):
     st.session_state.messages.append({"role": "user", "content": user_input, "timestamp": timestamp})
 
     # Generate response
-    if not hf_token:
-        st.error("Please enter your Hugging Face Token first.")
+    if st.session_state.chunks:
+        # Retrieve relevant chunk using RAG
+        relevant_chunk = retrieve_relevant_chunk(user_input, st.session_state.chunks)
+        full_response, token_usage = generate_response(user_input, context=relevant_chunk)
     else:
-        if instructions:
-            optimized_prompt = optimize_prompt(user_input, instructions)
-            response, token_usage = generate_response(optimized_prompt)
-        else:
-            response, token_usage = generate_response(user_input)
+        full_response, token_usage = generate_response(user_input)
 
-        if st.session_state.chunks:
-            # Retrieve relevant chunk using RAG
-            relevant_chunk = retrieve_relevant_chunk(user_input, st.session_state.chunks)
-            full_response = f"**Answer:** {response}\n\n**Relevant chunk used:** {relevant_chunk}"
-        else:
-            full_response = f"**Answer:** {response}"
+    # Add assistant message to chat history
+    timestamp = time.strftime("%H:%M")
+    st.session_state.messages.append({"role": "assistant", "content": full_response, "timestamp": timestamp})
 
-        # Add assistant message to chat history
-        timestamp = time.strftime("%H:%M")
-        st.session_state.messages.append({"role": "assistant", "content": full_response, "timestamp": timestamp})
-
-        # Feedback on token usage
-        st.write(f"Tokens used: {token_usage}")
-        st.progress(token_usage / 1500)
+    # Feedback on token usage
+    st.write(f"Tokens used: {token_usage}")
+    st.progress(token_usage / 1500)
