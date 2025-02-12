@@ -4,6 +4,7 @@ from utils.pdf_processor import extract_text_from_pdf
 from utils.chunker import chunk_text
 from utils.rag import retrieve_relevant_chunk
 from utils.prompt_optimizer import optimize_prompt
+import time
 
 # Load CSS
 def load_css():
@@ -24,21 +25,39 @@ uploaded_file = st.sidebar.file_uploader("Upload a PDF file", type=["pdf"])
 # Prompt optimizer
 instructions = st.sidebar.text_area("Add instructions for prompt optimization (optional):")
 
-# Initialize AI model if HF_TOKEN is provided
-if hf_token:
-    client = InferenceClient(
-        provider="hf-inference",
-        api_key=hf_token
-    )
-else:
-    st.sidebar.warning("Please enter your Hugging Face Token to use the model.")
+# Initialize session state variables
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "last_activity" not in st.session_state:
+    st.session_state.last_activity = time.time()
+if "chunks" not in st.session_state:
+    st.session_state.chunks = []
+
+# Function to reset user data
+def reset_user_data():
+    st.session_state.messages = []
+    st.session_state.chunks = []
+    st.session_state.uploaded_file = None
+    st.sidebar.success("User data has been cleared due to inactivity.")
+
+# Check for inactivity
+current_time = time.time()
+if current_time - st.session_state.last_activity > 120:  # 120 seconds = 2 minutes
+    reset_user_data()
+
+# Update last activity time whenever there is user interaction
+st.session_state.last_activity = current_time
 
 # Process PDF file if uploaded
-chunks = []
 if uploaded_file:
-    text = extract_text_from_pdf(uploaded_file)
-    chunks = chunk_text(text)
-    st.sidebar.write(f"File uploaded successfully and split into {len(chunks)} chunks.")
+    try:
+        # Extract text from the uploaded PDF
+        text = extract_text_from_pdf(uploaded_file)
+        st.session_state.chunks = chunk_text(text)
+        st.sidebar.success("PDF successfully processed!")
+        st.sidebar.write(f"File split into {len(st.session_state.chunks)} chunks.")
+    except ValueError as e:
+        st.sidebar.error(str(e))
 
 # Function to generate response from the model
 def generate_response(prompt, context=None):
@@ -58,41 +77,30 @@ def generate_response(prompt, context=None):
 # Main page
 st.title("LLM Chatbot with Local RAG")
 
-# Initialize chat history
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
 # Display chat messages from history
 for message in st.session_state.messages:
-    if message["role"] == "user":
-        st.markdown(
-            f"""
-            <div class="chat-container">
-                <div class="user-bubble">
-                    {message["content"]}
-                    <div class="timestamp">{message.get("timestamp", "")}</div>
-                </div>
+    role = message["role"]
+    content = message["content"]
+    timestamp = message.get("timestamp", "")
+    avatar_class = "user-avatar" if role == "user" else "assistant-avatar"
+    bubble_class = "user-bubble" if role == "user" else "assistant-bubble"
+
+    st.markdown(
+        f"""
+        <div class="chat-container">
+            <div class="{bubble_class}">
+                <div class="{avatar_class}"></div>
+                {content}
+                <div class="timestamp">{timestamp}</div>
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    elif message["role"] == "assistant":
-        st.markdown(
-            f"""
-            <div class="chat-container">
-                <div class="assistant-bubble">
-                    {message["content"]}
-                    <div class="timestamp">{message.get("timestamp", "")}</div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # User input for questions
 if user_input := st.chat_input("Type your question here..."):
     # Add user message to chat history
-    import time
     timestamp = time.strftime("%H:%M")
     st.session_state.messages.append({"role": "user", "content": user_input, "timestamp": timestamp})
 
@@ -106,8 +114,9 @@ if user_input := st.chat_input("Type your question here..."):
         else:
             response, token_usage = generate_response(user_input)
 
-        if uploaded_file:
-            relevant_chunk = retrieve_relevant_chunk(user_input, chunks)
+        if st.session_state.chunks:
+            # Retrieve relevant chunk using RAG
+            relevant_chunk = retrieve_relevant_chunk(user_input, st.session_state.chunks)
             full_response = f"**Answer:** {response}\n\n**Relevant chunk used:** {relevant_chunk}"
         else:
             full_response = f"**Answer:** {response}"
@@ -115,3 +124,7 @@ if user_input := st.chat_input("Type your question here..."):
         # Add assistant message to chat history
         timestamp = time.strftime("%H:%M")
         st.session_state.messages.append({"role": "assistant", "content": full_response, "timestamp": timestamp})
+
+        # Feedback on token usage
+        st.write(f"Tokens used: {token_usage}")
+        st.progress(token_usage / 1500)
