@@ -12,35 +12,35 @@ def load_css():
 
 load_css()
 
-# Sidebar untuk input pengguna
-st.sidebar.title("Pengaturan")
+# Sidebar for user inputs
+st.sidebar.title("Settings")
 
 # Input HF_TOKEN
-hf_token = st.sidebar.text_input("Masukkan Hugging Face Token:", type="password")
+hf_token = st.sidebar.text_input("Enter Hugging Face Token:", type="password")
 
-# Upload file PDF
-uploaded_file = st.sidebar.file_uploader("Unggah file PDF", type=["pdf"])
+# Upload PDF file
+uploaded_file = st.sidebar.file_uploader("Upload a PDF file", type=["pdf"])
 
 # Prompt optimizer
-instructions = st.sidebar.text_area("Tambahkan instruksi untuk prompt optimizer (opsional):")
+instructions = st.sidebar.text_area("Add instructions for prompt optimization (optional):")
 
-# Inisialisasi model AI jika HF_TOKEN tersedia
+# Initialize AI model if HF_TOKEN is provided
 if hf_token:
     client = InferenceClient(
         provider="hf-inference",
         api_key=hf_token
     )
 else:
-    st.sidebar.warning("Silakan masukkan Hugging Face Token untuk menggunakan model.")
+    st.sidebar.warning("Please enter your Hugging Face Token to use the model.")
 
-# Proses file PDF jika diunggah
+# Process PDF file if uploaded
 chunks = []
 if uploaded_file:
     text = extract_text_from_pdf(uploaded_file)
     chunks = chunk_text(text)
-    st.sidebar.write(f"File berhasil diunggah dan dibagi menjadi {len(chunks)} chunk.")
+    st.sidebar.write(f"File uploaded successfully and split into {len(chunks)} chunks.")
 
-# Fungsi untuk menghasilkan respons dari model
+# Function to generate response from the model
 def generate_response(prompt, context=None):
     messages = [
         {"role": "user", "content": prompt}
@@ -55,18 +55,50 @@ def generate_response(prompt, context=None):
     )
     return completion.choices[0].message.content, completion.usage.total_tokens
 
-# Halaman utama
-st.title("Chatbot LLM dengan RAG Lokal")
+# Main page
+st.title("LLM Chatbot with Local RAG")
 
-# Input pertanyaan
-user_input = st.text_input("Masukkan pertanyaan Anda:")
+# Initialize chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-# Tombol kirim
-if st.button("Kirim"):
+# Display chat messages from history
+for message in st.session_state.messages:
+    if message["role"] == "user":
+        st.markdown(
+            f"""
+            <div class="chat-container">
+                <div class="user-bubble">
+                    {message["content"]}
+                    <div class="timestamp">{message.get("timestamp", "")}</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    elif message["role"] == "assistant":
+        st.markdown(
+            f"""
+            <div class="chat-container">
+                <div class="assistant-bubble">
+                    {message["content"]}
+                    <div class="timestamp">{message.get("timestamp", "")}</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+# User input for questions
+if user_input := st.chat_input("Type your question here..."):
+    # Add user message to chat history
+    import time
+    timestamp = time.strftime("%H:%M")
+    st.session_state.messages.append({"role": "user", "content": user_input, "timestamp": timestamp})
+
+    # Generate response
     if not hf_token:
-        st.error("Silakan masukkan Hugging Face Token terlebih dahulu.")
-    elif not user_input:
-        st.error("Silakan masukkan pertanyaan Anda.")
+        st.error("Please enter your Hugging Face Token first.")
     else:
         if instructions:
             optimized_prompt = optimize_prompt(user_input, instructions)
@@ -76,10 +108,10 @@ if st.button("Kirim"):
 
         if uploaded_file:
             relevant_chunk = retrieve_relevant_chunk(user_input, chunks)
-            st.write("Jawaban:", response)
-            st.write("Chunk yang digunakan:", relevant_chunk)
+            full_response = f"**Answer:** {response}\n\n**Relevant chunk used:** {relevant_chunk}"
         else:
-            st.write("Jawaban:", response)
-        
-        # Feedback token usage
-        st.write(f"Jumlah token yang digunakan: {token_usage}")
+            full_response = f"**Answer:** {response}"
+
+        # Add assistant message to chat history
+        timestamp = time.strftime("%H:%M")
+        st.session_state.messages.append({"role": "assistant", "content": full_response, "timestamp": timestamp})
