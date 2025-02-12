@@ -1,9 +1,10 @@
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from sentence_transformers import SentenceTransformer, util
+
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
 def retrieve_relevant_chunk(query, chunks):
-    vectorizer = TfidfVectorizer()
-    vectors = vectorizer.fit_transform([query] + chunks)
-    similarities = cosine_similarity(vectors[0], vectors[1:])
-    most_similar_index = similarities.argmax()
+    query_embedding = model.encode(query)
+    chunk_embeddings = model.encode(chunks)
+    similarities = util.cos_sim(query_embedding, chunk_embeddings)
+    most_similar_index = similarities.argmax().item()
     return chunks[most_similar_index]
