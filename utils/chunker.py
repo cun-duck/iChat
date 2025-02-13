@@ -1,14 +1,23 @@
+import os
 import nltk
 from nltk.tokenize import sent_tokenize
 from sentence_transformers import SentenceTransformer, util
 
-# Periksa apakah resource 'punkt' sudah tersedia, jika tidak, download resource tersebut.
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt', quiet=True)
+# Tentukan direktori writable untuk NLTK data
+nltk_data_dir = os.path.join(os.getcwd(), "nltk_data")
+if not os.path.exists(nltk_data_dir):
+    os.makedirs(nltk_data_dir, exist_ok=True)
 
-# Inisialisasi model secara global untuk efisiensi
+# Tambahkan direktori tersebut ke path NLTK
+nltk.data.path.append(nltk_data_dir)
+
+# Periksa dan download resource 'punkt' jika belum ada
+try:
+    nltk.data.find("tokenizers/punkt")
+except LookupError:
+    nltk.download("punkt", download_dir=nltk_data_dir)
+
+# Inisialisasi model SentenceTransformer secara global untuk efisiensi
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
 def chunk_text(text, max_chunk_size=500, similarity_threshold=0.75):
@@ -54,7 +63,9 @@ def chunk_text(text, max_chunk_size=500, similarity_threshold=0.75):
                 # Gabungkan kalimat ke chunk yang ada
                 current_chunk += " " + sentence
                 # Perbarui rata-rata embedding chunk secara incremental
-                current_chunk_embedding = (current_chunk_embedding * current_chunk_sentence_count + sentence_embedding) / (current_chunk_sentence_count + 1)
+                current_chunk_embedding = (
+                    current_chunk_embedding * current_chunk_sentence_count + sentence_embedding
+                ) / (current_chunk_sentence_count + 1)
                 current_chunk_sentence_count += 1
 
     # Tambahkan chunk terakhir jika ada
