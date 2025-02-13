@@ -2,8 +2,11 @@ import nltk
 from nltk.tokenize import sent_tokenize
 from sentence_transformers import SentenceTransformer, util
 
-# Pastikan resource NLTK tersedia
-nltk.download('punkt', quiet=True)
+# Periksa apakah resource 'punkt' sudah tersedia, jika tidak, download resource tersebut.
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt', quiet=True)
 
 # Inisialisasi model secara global untuk efisiensi
 model = SentenceTransformer('all-MiniLM-L6-v2')
